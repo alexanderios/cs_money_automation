@@ -1,5 +1,1 @@
-def main():
-    pass
-    
-if __main__ == '__main__':
-    main()
+from .base_page import BasePage

@@ -1,58 +1,113 @@
-from time import sleep
+import logging
 
 import pytest
 from selenium import webdriver
-from selenium.common import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-import allure
+
+from pages.trade import BotTradePage
+from validation import TradeValidation
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-XPATH_ACCEPT_COOKIE = "//div[contains(@class, 'Default_container-wrapper')]//button[.//span[contains(@class, 'Button-module_label') and contains(text(), 'Accept')]]"
-XPATH_BOT_SIDE = "//div[contains(@class, 'bot-listing_header')]"
-XPATH_USER_SIDE = "//div[contains(@class, 'user-listing_header')]"
+@pytest.fixture(scope="class")
+def driver():
+    driver = webdriver.Chrome()
+    driver.maximize_window()
+    yield driver
+    driver.quit()
 
-XPATH_SORT_BUTTON = "//button[contains(@class, 'csm_ui__toggle_button') and @aria-haspopup='listbox' and @aria-expanded='false']"
-DEFAULT_PRICE = "//ul[contains(@class, 'csm_ui__options_list')]/li[span[contains(text(), 'Default')]]"
-MAX_PRICE = "//ul[contains(@class, 'csm_ui__options_list')]/li[span[contains(text(), 'Price: Max')]]"
-MIN_PRICE = "//ul[contains(@class, 'csm_ui__options_list')]/li[span[contains(text(), 'Price: Min')]]"
-FLOAT_MAX_PRICE = "//ul[contains(@class, 'csm_ui__options_list')]/li[span[contains(text(), 'Float: Max')]]"
-FLOAT_MIN_PRICE = "//ul[contains(@class, 'csm_ui__options_list')]/li[span[contains(text(), 'Float: Min')]]"
 
-# Improved setup_browser function with Allure steps
-def setup_browser():
-    with allure.step("Настройка браузера"):
-        options = Options()
-        options.headless = True  # Запуск браузера в фоновом режиме
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        return driver
+@pytest.mark.usefixtures("driver")
+class TestSorting:
+    def test_sort_by_min_price(self, driver):
+        """
+        Сортировка по цене - от меньшего к большему
+        """
+        page = BotTradePage(driver)
+        page.select_sort_by_min_price()
+        inventory_items = page.get_inventory_items()
 
-@allure.feature("Тестирование сортировок инвентаря бота")
-class TestInventorySorting:
+        validation = TradeValidation()
+        validation.check_price_order_ascending(inventory_items)
 
-    @allure.story("Сортировка по имени")
-    @pytest.fixture(scope="function")
-    def setup(self):
-        self.driver = setup_browser()
-        self.driver.get("https://cs.money/csgo/trade/")
-        yield
-        if hasattr(self, 'driver'):
-            self.driver.quit()
+    def test_sort_by_max_price(self, driver):
+        """
+        Сортировка по цене - от большего к меньшему
+        """
+        page = BotTradePage(driver)
+        page.select_sort_by_max_price()
+        inventory_items = page.get_inventory_items()
 
-    @allure.testcase("Проверка сортировки по возрастанию имени")
-    def test_sort_by_name_ascending(self, setup):
-        with allure.step("Принятие куки"):
-            try:
-                accept_cookie_button = self.driver.find_element(By.XPATH, XPATH_ACCEPT_COOKIE)
-                accept_cookie_button.click()
-            except NoSuchElementException:
-                allure.attach(self.driver.get_screenshot_as_png(), name="Screenshot on Error", attachment_type=allure.attachment_type.PNG)
-                raise
+        validation = TradeValidation()
+        validation.check_price_order_descending(inventory_items)
 
-        with allure.step("Выбор сортировки по максимальной цене"):
-            sort_button = self.driver.find_element(By.XPATH, XPATH_BOT_SIDE + XPATH_SORT_BUTTON)
-            sort_button.click()
-            sort_by_max_price_button = self.driver.find_element(By.XPATH, XPATH_BOT_SIDE + MAX_PRICE)
-            sort_by_max_price_button.click()
+    def test_sort_by_min_float(self, driver):
+        """
+        Сортировка по Float инвентора - от меньшего к большему
+        """
+        page = BotTradePage(driver)
+        page.select_sort_by_min_float()
+        inventory_items = page.get_inventory_items()
+
+        validation = TradeValidation()
+        validation.check_float_order_ascending(inventory_items)
+
+    def test_sort_by_max_float(self, driver):
+        """
+        Сортировка по Float инвентора - от больше к меньшему
+        """
+        page = BotTradePage(driver)
+        page.select_sort_by_max_float()
+
+        inventory_items = page.get_inventory_items()
+
+        validation = TradeValidation()
+        validation.check_float_order_descending(inventory_items)
+
+    def test_sort_min_price_with_same_price(self, driver):
+        """
+        Проверка сортировки цены в одинаковом ценовом диапазоне по фильтру Min Price
+        """
+        page = BotTradePage(driver)
+        page.set_price_filtering(1, 1)
+        inventory_items_before = page.get_inventory_items()
+
+        page.select_sort_by_min_price()
+
+        inventory_items_after = page.get_inventory_items()
+
+        validation = TradeValidation()
+        validation.check_stability_on_equal_price(inventory_items_before, inventory_items_after)
+
+    def test_sort_max_price_with_same_price(self, driver):
+        """
+        Проверка сортировки цены в одинаковом ценовом диапазоне по фильтру Max Price
+        """
+        page = BotTradePage(driver)
+        page.set_price_filtering(1, 1)
+        inventory_items_before = page.get_inventory_items()
+
+        page.select_sort_by_max_price()
+
+        inventory_items_after = page.get_inventory_items()
+
+        validation = TradeValidation()
+        validation.check_stability_on_equal_price(inventory_items_before, inventory_items_after)
+
+    def test_sort_max_price_with_granite_values(self, driver):
+        """
+        Проверка сортировки цены в ограниченном ценовом диапазоне
+        """
+        page = BotTradePage(driver)
+        page.set_price_filtering(0.05, 5)
+
+        page.select_sort_by_max_price()
+        inventory_items_max = page.get_inventory_items()
+
+        validation = TradeValidation()
+        validation.check_item_price(inventory_items_max[0], 5)
+
+        page.select_sort_by_min_price()
+        inventory_items_min = page.get_inventory_items()
+
+        validation.check_item_price(inventory_items_min[0], 0.05)
