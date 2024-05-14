@@ -13,11 +13,11 @@ class InventoryPage(BasePage):
     ACCEPT_COOKIE = "//div[contains(@class, 'Default_container-wrapper')]//button[.//span[contains(@class, 'Button-module_label') and contains(text(), 'Accept')]]"
 
     SORT_BUTTON = "//button[substring(@class, 1, 3) = 'csm' and contains(@class, 'ui') and contains(@class, 'toggle') and contains(@class, 'button') and @aria-haspopup='listbox' and @aria-expanded='false']"
-    DEFAULT_PRICE = "//*[@id[substring(., string-length(.) - string-length('-item-0') + 1) = '-item-0']]"
-    MAX_PRICE = "//*[@id[substring(., string-length(.) - string-length('-item-1') + 1) = '-item-1']]"
-    MIN_PRICE = "//*[@id[substring(., string-length(.) - string-length('-item-2') + 1) = '-item-2']]"
-    FLOAT_MAX = "//*[@id[substring(., string-length(.) - string-length('-item-3') + 1) = '-item-3']]"
-    FLOAT_MIN = "//*[@id[substring(., string-length(.) - string-length('-item-4') + 1) = '-item-4']]"
+    DEFAULT_PRICE = "//li[span[contains(text(), 'Default)]]"
+    MAX_PRICE = "//li[span[contains(text(), 'Price: Max')]]"
+    MIN_PRICE = "//li[span[contains(text(), 'Price: Min')]]"
+    FLOAT_MAX = "//li[span[contains(text(), 'Float: Max')]]"
+    FLOAT_MIN = "//li[span[contains(text(), 'Float: Min')]]"
 
     PRICE_FROM = "//div[contains(@class, 'FilterPrice_inputs')]//input[contains(@placeholder, '$ 0.00')]"
     PRICE_TO = "//div[contains(@class, 'FilterPrice_inputs')]//input[contains(@placeholder, '$ ∞')]"
